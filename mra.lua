@@ -40,24 +40,22 @@ mra_proto.fields.length = ProtoField.uint32("mra.length", "Length",   base.DEC)
 
 function mra_proto.dissector(buffer,pinfo,tree)
     local offset = 0
-    while (offset < buffer.len) do
-        local rest = buffer.range(offset)
-        if (rest.len < 20) then
+    while (offset < buffer:len()) do
+        local rest = buffer(offset)
+        if (rest:len() < 20) then
             -- we event can't detect pud mra packet length
             pinfo.desegment_offset = offset
             pinfo.desegment_len    = -1 
             return nil
         end
         local length = 7 * 4 + 16 + rest(16,4):le_uint()
-        if (rest.len < length) then
+        if (rest:len() < length) then
             -- mra packet is not complete
             pinfo.desegment_offset = offset
-            pinfo.desegment_len    = length - rest.len
+            pinfo.desegment_len    = length - rest:len()
             return nil
         end
         pinfo.cols.protocol = "MRA"
-        --pinfo.cols.length:set(length)
-        --pinfo.cols.info:set("Type:" .. ( vs_types[_type] or _type ))
         local subtree = tree:add(mra_proto, rest(), "Mail.Ru Agent Protocol Data")
         subtree:add_le(mra_proto.fields.magic,  rest(0,4))
         subtree:add_le(mra_proto.fields.proto,  rest(4,4))
@@ -66,28 +64,6 @@ function mra_proto.dissector(buffer,pinfo,tree)
         subtree:add_le(mra_proto.fields.length, rest(16,4))
         offset = offset + length
     end
-
-   -- local length = 7 * 4 + 16 + buffer(16,4):le_uint()
-   -- if (pinfo.len < length) then
-   --     -- mra packet is not complete
-   --     pinfo.desegment_len = length - pinfo.len
-   --     return nil
-   -- end
-   -- if (pinfo.len > length) then
-   --     -- tcp packet contains more than one mra packet
-   --     pinfo.desegment_offset = length
-   -- end
-   -- pinfo.cols.protocol = "MRA"
-   -- --pinfo.cols.length:set(length)
-   -- --pinfo.cols.info:set("Type:" .. ( vs_types[_type] or _type ))
-   -- 
-   -- local subtree = tree:add(mra_proto, buffer(), "Mail.Ru Agent Protocol Data")
-   -- subtree:add_le(buffer(0,4), "Tcp len: " .. pinfo.len) 
-   -- subtree:add_le(mra_proto.fields.magic,  buffer(0,4))
-   -- subtree:add_le(mra_proto.fields.proto,  buffer(4,4))
-   -- subtree:add_le(mra_proto.fields.seq,    buffer(8,4))
-   -- subtree:add_le(mra_proto.fields._type,  buffer(12,4))
-   -- subtree:add_le(mra_proto.fields.length, buffer(16,4))
 end
 
 local tcp_table = DissectorTable.get("tcp.port")
